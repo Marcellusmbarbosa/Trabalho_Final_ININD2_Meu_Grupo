@@ -25,19 +25,60 @@ AsyncDelay_c delay4A20(100); // time in milliseconds
 uint8_t count = 0;
 double vlR4a20_1 = 0.0;
 int Josue = 100;
-int pwm = 1; // Inicializa PWM como 0
+int pwm = 200; // Inicializa PWM como 0
+
+//VARIAVEIS DE CONTROLE
+float Kp = /* valor de Kp */7.82;
+float Ki = /* valor de Ki */0.0074;
+float Kd = /* valor de Kd */0;
+float Ts = 0.0001; // Tempo de amostragem em segundos
+
+float erro = 0;
+float erro_anterior = 0;
+float erro_integral = 0;
+float saida_controlador = 0;
+float setpoint = 12.5;
+int aux = 0;
+
+int controle_funcao(){
+     // monitoraPOT();
+    erro = setpoint - vlR4a20_1; // Calcule o erro
+    erro_integral += erro * Ts;
+    float erro_derivativo = (erro - erro_anterior) / Ts;
+
+    // PID Discreto
+    saida_controlador = Kp * erro + Ki * erro_integral + Kd * erro_derivativo;
+    return saida_controlador;
+}
+
 
 void monitora4A20(void) {
     if (delay4A20.isExpired()) {
         delay4A20.repeat();
         vlR4a20_1 += (double)analogRead(def_pin_R4a20_1);
 
-        if (++count >= 20 && pwm!=0) {
+        if (++count >= 20) {
             vlR4a20_1 /= count; // média dos 20 valores
             vlR4a20_1 = (vlR4a20_1 + 309.17) / 220.10;
-
+            // Atualize o erro anterior
+            erro_anterior = erro;
+            aux = controle_funcao();
+            if(aux > 255){
+                pwm = 255;
+            }
+            else if(aux < 100){
+                aux = aux*100;
+                if(aux > 255){
+                    aux = 100;
+                }
+                pwm = aux; 
+            }
+            else{
+                pwm = aux; 
+            }
+            //pwm = 200;
             // Lógica para calcular o PWM
-            if (time_counter_sa < Josue) {
+            /*if (time_counter_sa < Josue) {
                 pwm = 80;
             } else if (time_counter_sa >= Josue && time_counter_sa < 2 * Josue) {
                 pwm = 200;
@@ -48,7 +89,7 @@ void monitora4A20(void) {
             } else {
                 pwm = 0;
             
-            }
+            }*/
 
             IIKit.disp.setText(3, ("T1:" + String(vlR4a20_1)).c_str());
             time_counter_sa = float(millis() / 1000.00);
@@ -98,8 +139,11 @@ void setup() {
 }
 
 void loop() {
+    
     IIKit.loop();
     // Descomente se necessário
-    // monitoraPOT();
+
+    // Envie o valor da saída para o atuador, ajustando conforme necessário
     monitora4A20();
 }
+
