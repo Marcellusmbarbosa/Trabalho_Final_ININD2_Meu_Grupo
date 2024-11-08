@@ -1,0 +1,1 @@
+com2tcp-rfc2217.bat \\.\CNCA11 inindkit1.local 4001
